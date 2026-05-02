@@ -158,10 +158,10 @@ const SUPABASE_KEY = 'sb_publishable_doyTc_8mPlV5wG1CuwhPRQ_pnzkQCuu';
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const TASKS = [
-    { id: 'bestbrains', label: 'Bestbrains',        emoji: '🧠', points: 30 },
-    { id: 'homework',   label: 'School Homework',    emoji: '📚', points: 25 },
-    { id: 'dishwasher', label: 'Dishwasher Job',     emoji: '🍽️', points: 20 },
-    { id: 'vacuum',     label: 'Vacuum Cleaner Job', emoji: '🧹', points: 20 },
+    { id: 'bestbrains',  label: 'Bestbrains',          emoji: '🧠', points: 30 },
+    { id: 'homework',    label: 'School Homework',     emoji: '📚', points: 25 },
+    { id: 'brushnight',  label: 'Brushed at Night',    emoji: '🪥', points: 20 },
+    { id: 'eatownown',   label: 'Eat on My Own',       emoji: '🍽️', points: 20 },
 ];
 
 const MAX = TASKS.reduce((s, t) => s + t.points, 0);
