@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>⭐ My Daily Stars</title>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -18,89 +19,54 @@
 
         .container { max-width: 480px; margin: 0 auto; }
 
-        /* ── Header ── */
         .header { text-align: center; padding: 8px 0 20px; color: white; }
         .header h1 { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; text-shadow: 0 2px 12px rgba(0,0,0,0.2); }
         .header .subtitle { font-size: 13px; opacity: 0.85; margin-top: 4px; font-weight: 600; }
 
-        /* ── Points card ── */
         .points-card {
-            background: white;
-            border-radius: 24px;
-            padding: 22px 22px 18px;
-            text-align: center;
-            margin-bottom: 14px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+            background: white; border-radius: 24px;
+            padding: 22px 22px 18px; text-align: center;
+            margin-bottom: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
         }
         .points-row { display: flex; align-items: flex-end; justify-content: center; gap: 6px; }
         .points-big { font-size: 56px; font-weight: 900; color: #7c3aed; line-height: 1; }
         .points-max { font-size: 20px; font-weight: 700; color: #a78bfa; padding-bottom: 8px; }
         .points-label { font-size: 13px; color: #9ca3af; font-weight: 700; margin-top: 2px; }
-
         .progress-wrap { background: #f3f4f6; border-radius: 99px; height: 14px; margin: 14px 0 10px; overflow: hidden; }
         .progress-fill {
-            height: 100%;
-            border-radius: 99px;
+            height: 100%; border-radius: 99px;
             background: linear-gradient(90deg, #a855f7, #6366f1);
             transition: width 0.5s cubic-bezier(.4,0,.2,1);
         }
-
         .badges-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
-        .badge {
-            display: inline-flex; align-items: center; gap: 5px;
-            border-radius: 99px; padding: 5px 12px;
-            font-size: 13px; font-weight: 800;
-        }
+        .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 99px; padding: 5px 12px; font-size: 13px; font-weight: 800; }
         .badge-streak { background: #fff7ed; color: #ea580c; }
         .badge-level  { background: #f0fdf4; color: #16a34a; }
 
-        /* ── Encouragement ── */
         .encouragement {
-            background: white;
-            border-radius: 16px;
-            padding: 14px 18px;
-            margin-bottom: 14px;
-            text-align: center;
-            font-size: 15px;
-            font-weight: 800;
-            color: #4b5563;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            line-height: 1.4;
+            background: white; border-radius: 16px; padding: 14px 18px;
+            margin-bottom: 14px; text-align: center; font-size: 15px;
+            font-weight: 800; color: #4b5563;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1); line-height: 1.4;
         }
 
-        /* ── Tasks ── */
         .section-label {
-            color: rgba(255,255,255,0.9);
-            font-size: 13px;
-            font-weight: 800;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            margin-bottom: 10px;
+            color: rgba(255,255,255,0.9); font-size: 13px; font-weight: 800;
+            letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px;
         }
 
         .task-card {
-            background: white;
-            border-radius: 18px;
-            padding: 16px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            cursor: pointer;
-            transition: transform 0.12s, box-shadow 0.12s;
-            border: 2.5px solid transparent;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
+            background: white; border-radius: 18px; padding: 16px;
+            margin-bottom: 12px; display: flex; align-items: center; gap: 14px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1); cursor: pointer;
+            transition: transform 0.12s, opacity 0.12s; border: 2.5px solid transparent;
+            -webkit-tap-highlight-color: transparent; user-select: none;
         }
         .task-card:active { transform: scale(0.97); }
-        .task-card.done {
-            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-            border-color: #86efac;
-        }
+        .task-card.done { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-color: #86efac; }
+        .task-card.loading { opacity: 0.6; pointer-events: none; }
 
         .task-emoji { font-size: 38px; width: 52px; text-align: center; flex-shrink: 0; }
-
         .task-info { flex: 1; }
         .task-name { font-size: 16px; font-weight: 800; color: #1f2937; }
         .task-card.done .task-name { color: #166534; text-decoration: line-through; opacity: 0.75; }
@@ -108,29 +74,14 @@
         .task-card.done .task-pts-label { color: #22c55e; }
 
         .task-check {
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            border: 3px solid #d1d5db;
+            width: 36px; height: 36px; border-radius: 50%; border: 3px solid #d1d5db;
             display: flex; align-items: center; justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-            color: white;
+            font-size: 18px; flex-shrink: 0; color: white;
             transition: background 0.2s, border-color 0.2s, transform 0.2s;
         }
-        .task-card.done .task-check {
-            background: #22c55e;
-            border-color: #22c55e;
-            transform: scale(1.1);
-        }
+        .task-card.done .task-check { background: #22c55e; border-color: #22c55e; transform: scale(1.1); }
 
-        /* ── Stat cards ── */
-        .stat-card {
-            background: white;
-            border-radius: 22px;
-            padding: 20px;
-            margin-top: 14px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
+        .stat-card { background: white; border-radius: 22px; padding: 20px; margin-top: 14px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
         .stat-title { font-size: 16px; font-weight: 800; color: #1f2937; margin-bottom: 16px; }
 
         .week-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
@@ -138,23 +89,28 @@
         .week-box .wval { font-size: 30px; font-weight: 900; color: #7c3aed; }
         .week-box .wlbl { font-size: 12px; color: #9ca3af; font-weight: 700; margin-top: 2px; }
 
-        .change-pill {
-            text-align: center; font-size: 14px; font-weight: 800;
-            padding: 10px 16px; border-radius: 12px;
-        }
+        .change-pill { text-align: center; font-size: 14px; font-weight: 800; padding: 10px 16px; border-radius: 12px; }
         .change-up   { background: #f0fdf4; color: #16a34a; }
         .change-down { background: #fff1f2; color: #e11d48; }
         .change-same { background: #faf5ff; color: #7c3aed; }
 
-        /* ── Confetti ── */
+        /* Loading spinner */
+        .spinner {
+            display: flex; justify-content: center; align-items: center;
+            padding: 40px; color: white; font-size: 16px; font-weight: 700; gap: 12px;
+        }
+        .spin {
+            width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         @keyframes confetti-fall {
             0%   { transform: translateY(-30px) rotate(0deg); opacity: 1; }
             100% { transform: translateY(110vh) rotate(800deg); opacity: 0; }
         }
-        .confetti-bit {
-            position: fixed; pointer-events: none; z-index: 9999;
-            animation: confetti-fall linear forwards;
-        }
+        .confetti-bit { position: fixed; pointer-events: none; z-index: 9999; animation: confetti-fall linear forwards; }
     </style>
 </head>
 <body>
@@ -165,54 +121,18 @@
         <div class="subtitle" id="dateDisplay"></div>
     </div>
 
-    <!-- Points summary -->
-    <div class="points-card">
-        <div class="points-row">
-            <div class="points-big" id="pointsToday">0</div>
-            <div class="points-max">/95</div>
-        </div>
-        <div class="points-label">stars earned today</div>
-        <div class="progress-wrap">
-            <div class="progress-fill" id="progressFill" style="width:0%"></div>
-        </div>
-        <div class="badges-row">
-            <span class="badge badge-streak" id="streakBadge">🔥 0 day streak</span>
-            <span class="badge badge-level"  id="levelBadge">🌱 Just starting</span>
-        </div>
-    </div>
-
-    <!-- Encouragement -->
-    <div class="encouragement" id="encouragement">You've got this! Tap a task to get started! 💪</div>
-
-    <!-- Task list -->
-    <div class="section-label">Today's Tasks</div>
-    <div id="taskList"></div>
-
-    <!-- Last 7 days chart -->
-    <div class="stat-card">
-        <div class="stat-title">📊 Last 7 Days</div>
-        <canvas id="weekChart" height="155"></canvas>
-    </div>
-
-    <!-- Week over week -->
-    <div class="stat-card">
-        <div class="stat-title">📅 Week Over Week</div>
-        <div class="week-grid">
-            <div class="week-box">
-                <div class="wval" id="thisWeekPts">0</div>
-                <div class="wlbl">This Week ⭐</div>
-            </div>
-            <div class="week-box">
-                <div class="wval" id="lastWeekPts">0</div>
-                <div class="wlbl">Last Week ⭐</div>
-            </div>
-        </div>
-        <div class="change-pill change-same" id="weekChange">📊 Keep going this week!</div>
+    <div id="appContent">
+        <div class="spinner"><div class="spin"></div> Loading your stars…</div>
     </div>
 
 </div>
 
 <script>
+// ── Config ───────────────────────────────────────────────────
+const SUPABASE_URL = 'https://hjhvwtrdbjsfxyttcsfd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_doyTc_8mPlV5wG1CuwhPRQ_pnzkQCuu';
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const TASKS = [
     { id: 'bestbrains', label: 'Bestbrains',        emoji: '🧠', points: 30 },
     { id: 'homework',   label: 'School Homework',    emoji: '📚', points: 25 },
@@ -238,56 +158,69 @@ const LEVELS = [
     { min:  0, label: '🌱 Just starting' },
 ];
 
-// ── Storage helpers ──────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────
 function dateKey(date = new Date()) {
     return date.toISOString().split('T')[0];
 }
-function load(key)       { const s = localStorage.getItem('st_' + key); return s ? JSON.parse(s) : { tasks: {} }; }
-function save(key, data) { localStorage.setItem('st_' + key, JSON.stringify(data)); }
-function dayPts(key)     { const d = load(key); return TASKS.filter(t => d.tasks[t.id]).reduce((s, t) => s + t.points, 0); }
 
-function streak() {
-    let n = 0;
-    for (let i = 0; i < 365; i++) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        if (dayPts(dateKey(d)) === MAX) n++;
-        else break;
+function daysAgo(n) {
+    const d = new Date(); d.setDate(d.getDate() - n); return dateKey(d);
+}
+
+// ── In-memory cache (last 30 days of done=true rows) ─────────
+let cache = []; // [{ date, task_id }]
+
+function isDone(date, taskId) {
+    return cache.some(r => r.date === date && r.task_id === taskId);
+}
+
+function dayPoints(date) {
+    return TASKS.filter(t => isDone(date, t.id)).reduce((s, t) => s + t.points, 0);
+}
+
+async function loadCache() {
+    const { data } = await db.from('task_completions')
+        .select('date, task_id')
+        .eq('done', true)
+        .gte('date', daysAgo(29))
+        .lte('date', dateKey());
+    cache = data || [];
+}
+
+// ── Toggle ───────────────────────────────────────────────────
+async function toggle(taskId) {
+    const date   = dateKey();
+    const done   = isDone(date, taskId);
+    const newVal = !done;
+
+    // Optimistic update
+    if (newVal) {
+        cache.push({ date, task_id: taskId });
+    } else {
+        cache = cache.filter(r => !(r.date === date && r.task_id === taskId));
     }
-    return n;
+
+    const wasAll = TASKS.every(t => isDone(date, t.id) || t.id === taskId && !newVal);
+    renderTasks();
+    updateHeader();
+
+    const isAll = TASKS.every(t => isDone(date, t.id));
+    if (isAll && !wasAll) confetti();
+
+    refreshChart();
+    refreshWeek();
+
+    // Persist to Supabase
+    await db.from('task_completions')
+        .upsert({ date, task_id: taskId, done: newVal }, { onConflict: 'date,task_id' });
 }
 
-function last7() {
-    return Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(); d.setDate(d.getDate() - (6 - i));
-        return {
-            label: i === 6 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
-            points: dayPts(dateKey(d)),
-        };
-    });
-}
-
-function weekPts(offset = 0) {
-    const now = new Date();
-    const mon = new Date(now);
-    mon.setDate(now.getDate() - ((now.getDay() + 6) % 7) - offset * 7);
-    let total = 0;
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(mon); d.setDate(mon.getDate() + i);
-        if (offset === 0 && d > now) break;
-        total += dayPts(dateKey(d));
-    }
-    return total;
-}
-
-// ── Render tasks ─────────────────────────────────────────────
-function render() {
-    const key  = dateKey();
-    const data = load(key);
+// ── Render ───────────────────────────────────────────────────
+function renderTasks() {
     const list = document.getElementById('taskList');
     list.innerHTML = '';
-
     TASKS.forEach(task => {
-        const done = !!data.tasks[task.id];
+        const done = isDone(dateKey(), task.id);
         const card = document.createElement('div');
         card.className = 'task-card' + (done ? ' done' : '');
         card.innerHTML = `
@@ -301,36 +234,42 @@ function render() {
         card.onclick = () => toggle(task.id);
         list.appendChild(card);
     });
-
-    updateHeader(data);
 }
 
-function toggle(id) {
-    const key  = dateKey();
-    const data = load(key);
-    const wasAll = TASKS.every(t => data.tasks[t.id]);
-    data.tasks[id] = !data.tasks[id];
-    save(key, data);
-    if (!wasAll && TASKS.every(t => data.tasks[t.id])) confetti();
-    render();
-    refreshChart();
-    refreshWeek();
-}
-
-function updateHeader(data) {
-    const done  = TASKS.filter(t => data.tasks[t.id]).length;
-    const pts   = TASKS.filter(t => data.tasks[t.id]).reduce((s, t) => s + t.points, 0);
+function updateHeader() {
+    const date  = dateKey();
+    const done  = TASKS.filter(t => isDone(date, t.id)).length;
+    const pts   = dayPoints(date);
     const level = LEVELS.find(l => pts >= l.min);
 
     document.getElementById('pointsToday').textContent  = pts;
     document.getElementById('progressFill').style.width = (pts / MAX * 100) + '%';
     document.getElementById('encouragement').textContent = MESSAGES[done];
-    document.getElementById('streakBadge').textContent  = '🔥 ' + streak() + ' day streak';
+    document.getElementById('streakBadge').textContent  = '🔥 ' + calcStreak() + ' day streak';
     document.getElementById('levelBadge').textContent   = level.label;
+}
+
+function calcStreak() {
+    let n = 0;
+    for (let i = 0; i < 30; i++) {
+        if (dayPoints(daysAgo(i)) === MAX) n++;
+        else break;
+    }
+    return n;
 }
 
 // ── Chart ────────────────────────────────────────────────────
 let chart;
+
+function last7() {
+    return Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - i));
+        return {
+            label: i === 6 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+            points: dayPoints(dateKey(d)),
+        };
+    });
+}
 
 function barColor(pts) {
     if (pts === 0)        return '#e5e7eb';
@@ -361,7 +300,7 @@ function buildChart() {
             scales: {
                 y: {
                     min: 0, max: MAX,
-                    ticks: { font: { family: 'Nunito', weight: '700' }, stepSize: MAX / 5 },
+                    ticks: { font: { family: 'Nunito', weight: '700' }, stepSize: 19 },
                     grid: { color: '#f3f4f6' },
                 },
                 x: {
@@ -381,6 +320,19 @@ function refreshChart() {
 }
 
 // ── Week stats ───────────────────────────────────────────────
+function weekPts(offset = 0) {
+    const now = new Date();
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - ((now.getDay() + 6) % 7) - offset * 7);
+    let total = 0;
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(mon); d.setDate(mon.getDate() + i);
+        if (offset === 0 && d > now) break;
+        total += dayPoints(dateKey(d));
+    }
+    return total;
+}
+
 function refreshWeek() {
     const tw = weekPts(0), lw = weekPts(1);
     document.getElementById('thisWeekPts').textContent = tw;
@@ -428,9 +380,56 @@ document.getElementById('dateDisplay').textContent = new Date().toLocaleDateStri
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
 });
 
-render();
-buildChart();
-refreshWeek();
+(async () => {
+    await loadCache();
+
+    document.getElementById('appContent').innerHTML = `
+        <div class="points-card">
+            <div class="points-row">
+                <div class="points-big" id="pointsToday">0</div>
+                <div class="points-max">/95</div>
+            </div>
+            <div class="points-label">stars earned today</div>
+            <div class="progress-wrap">
+                <div class="progress-fill" id="progressFill" style="width:0%"></div>
+            </div>
+            <div class="badges-row">
+                <span class="badge badge-streak" id="streakBadge">🔥 0 day streak</span>
+                <span class="badge badge-level"  id="levelBadge">🌱 Just starting</span>
+            </div>
+        </div>
+
+        <div class="encouragement" id="encouragement">You've got this! Tap a task to get started! 💪</div>
+
+        <div class="section-label">Today's Tasks</div>
+        <div id="taskList"></div>
+
+        <div class="stat-card">
+            <div class="stat-title">📊 Last 7 Days</div>
+            <canvas id="weekChart" height="155"></canvas>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-title">📅 Week Over Week</div>
+            <div class="week-grid">
+                <div class="week-box">
+                    <div class="wval" id="thisWeekPts">0</div>
+                    <div class="wlbl">This Week ⭐</div>
+                </div>
+                <div class="week-box">
+                    <div class="wval" id="lastWeekPts">0</div>
+                    <div class="wlbl">Last Week ⭐</div>
+                </div>
+            </div>
+            <div class="change-pill change-same" id="weekChange">📊 Keep going this week!</div>
+        </div>
+    `;
+
+    renderTasks();
+    updateHeader();
+    buildChart();
+    refreshWeek();
+})();
 </script>
 </body>
 </html>
