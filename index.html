@@ -464,6 +464,110 @@ function refreshWeek() {
     }
 }
 
+// ── Audio engine ─────────────────────────────────────────────
+let audioCtx = null;
+function audio() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function osc(ctx, freq, start, dur, type = 'sine', vol = 0.25, freqEnd = null) {
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = type;
+    o.frequency.setValueAtTime(freq, start);
+    if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, start + dur);
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(vol, start + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+    o.start(start); o.stop(start + dur + 0.05);
+}
+
+function noise(ctx, start, dur, vol = 0.12, freqFrom = 150, freqTo = 2500) {
+    const buf = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * dur), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    const flt = ctx.createBiquadFilter();
+    const g   = ctx.createGain();
+    src.buffer = buf;
+    flt.type = 'bandpass'; flt.Q.value = 0.8;
+    flt.frequency.setValueAtTime(freqFrom, start);
+    flt.frequency.exponentialRampToValueAtTime(freqTo, start + dur);
+    src.connect(flt); flt.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(vol, start);
+    g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+    src.start(start); src.stop(start + dur + 0.05);
+}
+
+// ✨ Single task: ascending sparkle power-up ✨
+function playTaskSound() {
+    const ctx = audio();
+    const t   = ctx.currentTime + 0.04;
+
+    // Bright ascending arpeggio
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+        osc(ctx, f, t + i * 0.09, 0.35 - i * 0.03, 'sine', 0.28);
+        osc(ctx, f * 2, t + i * 0.09, 0.18, 'sine', 0.07);  // harmonic shimmer
+    });
+
+    // Sparkle sprinkle (random high tinkles)
+    const highs = [1047, 1175, 1319, 1480, 1568, 1760, 2093, 2349];
+    for (let i = 0; i < 8; i++) {
+        osc(ctx, highs[Math.floor(Math.random() * highs.length)],
+            t + 0.05 + Math.random() * 0.55, 0.18, 'sine', 0.06);
+    }
+}
+
+// 🎆 All tasks done: EPIC victory fanfare 🎆
+function playCelebrationSound() {
+    const ctx = audio();
+    const t   = ctx.currentTime + 0.04;
+
+    // ── Drum roll buildup ──
+    for (let i = 0; i < 14; i++) {
+        noise(ctx, t + i * 0.055, 0.09, 0.07 + i * 0.007, 80, 300);
+    }
+
+    // ── Brass punch ──
+    [261.63, 329.63, 392.00, 523.25].forEach(f => {
+        osc(ctx, f, t + 0.78, 0.55, 'sawtooth', 0.10);
+        osc(ctx, f, t + 0.78, 0.55, 'square',   0.04);
+    });
+
+    // ── Ascending victory melody ──
+    const mel = [
+        [523.25, 1.4, 0.13], [587.33, 1.53, 0.13],
+        [659.25, 1.66, 0.13], [698.46, 1.79, 0.10],
+        [783.99, 1.89, 0.18], [880.00, 2.07, 0.13],
+        [987.77, 2.20, 0.13], [1046.5, 2.33, 0.65],
+    ];
+    mel.forEach(([f, time, dur]) => {
+        osc(ctx, f, t + time, dur, 'sine',     0.30);
+        osc(ctx, f, t + time, dur, 'triangle', 0.10);
+    });
+
+    // ── Big final chord ──
+    [523.25, 659.25, 783.99, 1046.5].forEach(f => {
+        osc(ctx, f, t + 3.05, 1.4, 'sine',     0.20);
+        osc(ctx, f, t + 3.05, 1.4, 'triangle', 0.07);
+    });
+    // Bell shimmer on top
+    [2093, 2637, 3136].forEach((f, i) => {
+        osc(ctx, f, t + 3.05 + i * 0.08, 1.1, 'sine', 0.055);
+    });
+    // Final snare crack
+    noise(ctx, t + 3.05, 0.25, 0.22, 200, 8000);
+
+    // ── Outro sparkle ──
+    for (let i = 0; i < 10; i++) {
+        const sp = [1047, 1319, 1568, 2093, 2637];
+        osc(ctx, sp[Math.floor(Math.random() * sp.length)],
+            t + 3.3 + Math.random() * 1.0, 0.25, 'sine', 0.05);
+    }
+}
+
 // ── Task toast ───────────────────────────────────────────────
 const TASK_TOASTS = [
     t => `${t.emoji} Woohoo! +${t.points} stars! 🌟`,
@@ -487,6 +591,7 @@ function showToast(task) {
     el.textContent = msg;
     el.classList.remove('hide');
     el.classList.add('show');
+    playTaskSound();
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
         el.classList.remove('show');
@@ -573,6 +678,7 @@ const CELEBRATION_MSGS = [
 ];
 
 function showCelebration(pts) {
+    playCelebrationSound();
     launchFireworks(4500);
 
     const msg = CELEBRATION_MSGS[Math.floor(Math.random() * CELEBRATION_MSGS.length)];
