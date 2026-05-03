@@ -125,6 +125,51 @@
         .spin { width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* ── Task toast ── */
+        .toast {
+            position: fixed; top: 24px; left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: white; border-radius: 20px;
+            padding: 14px 22px; box-shadow: 0 10px 40px rgba(0,0,0,0.22);
+            z-index: 3000; display: flex; align-items: center; gap: 10px;
+            font-size: 17px; font-weight: 800; color: #1f2937;
+            white-space: nowrap; pointer-events: none;
+            transition: transform 0.45s cubic-bezier(.34,1.56,.64,1), opacity 0.3s;
+            opacity: 0;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .toast.hide { transform: translateX(-50%) translateY(-120px); opacity: 0; transition: transform 0.3s ease-in, opacity 0.3s; }
+
+        /* ── Celebration overlay ── */
+        .celebration-overlay {
+            position: fixed; inset: 0; z-index: 2500;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+            opacity: 0; transition: opacity 0.4s;
+            pointer-events: none;
+        }
+        .celebration-overlay.show { opacity: 1; pointer-events: auto; }
+        .celebration-box {
+            background: white; border-radius: 32px; padding: 40px 32px;
+            text-align: center; max-width: 300px; width: 90%;
+            transform: scale(0.5); transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);
+        }
+        .celebration-overlay.show .celebration-box { transform: scale(1); }
+        .celebration-emoji { font-size: 64px; line-height: 1; margin-bottom: 12px; }
+        .celebration-title { font-size: 26px; font-weight: 900; color: #7c3aed; margin-bottom: 8px; line-height: 1.2; }
+        .celebration-sub { font-size: 15px; font-weight: 700; color: #6b7280; margin-bottom: 24px; }
+        .celebration-pts { font-size: 36px; font-weight: 900; color: #22c55e; margin-bottom: 6px; }
+        .celebration-pts-label { font-size: 13px; color: #9ca3af; font-weight: 700; margin-bottom: 24px; }
+        .celebration-close {
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            color: white; border: none; border-radius: 14px;
+            padding: 13px 32px; font-size: 16px; font-weight: 800;
+            cursor: pointer; font-family: 'Nunito', sans-serif;
+        }
+
+        /* ── Fireworks canvas ── */
+        #fireworksCanvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 2400; pointer-events: none; }
+
         /* ── Confetti ── */
         @keyframes confetti-fall {
             0%   { transform: translateY(-30px) rotate(0deg); opacity: 1; }
@@ -251,6 +296,7 @@ async function toggle(taskId) {
     const date   = selectedDate;
     const done   = isDone(date, taskId);
     const newVal = !done;
+    const task   = TASKS.find(t => t.id === taskId);
 
     if (newVal) {
         cache.push({ date, task_id: taskId });
@@ -259,7 +305,14 @@ async function toggle(taskId) {
     }
 
     const isAll = TASKS.every(t => isDone(date, t.id));
-    if (isAll && date === TODAY) confetti();
+
+    if (newVal) {
+        if (isAll) {
+            showCelebration(dayPoints(date));
+        } else {
+            showToast(task);
+        }
+    }
 
     renderTasks();
     updateHeader();
@@ -411,25 +464,135 @@ function refreshWeek() {
     }
 }
 
-// ── Confetti ─────────────────────────────────────────────────
-function confetti() {
-    const colors = ['#a855f7','#6366f1','#22c55e','#f59e0b','#ec4899','#3b82f6','#f97316'];
-    for (let i = 0; i < 80; i++) {
-        setTimeout(() => {
-            const el = document.createElement('div');
-            el.className = 'confetti-bit';
-            const size = 6 + Math.random() * 10;
-            el.style.cssText = `
-                left:${Math.random() * 100}vw; top:-20px;
-                width:${size}px; height:${size}px;
-                border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
-                background:${colors[Math.floor(Math.random() * colors.length)]};
-                animation-duration:${1.8 + Math.random() * 2}s;
-            `;
-            document.body.appendChild(el);
-            setTimeout(() => el.remove(), 4500);
-        }, i * 35);
+// ── Task toast ───────────────────────────────────────────────
+const TASK_TOASTS = [
+    t => `${t.emoji} Woohoo! +${t.points} stars! 🌟`,
+    t => `${t.emoji} Brilliant! Keep it up! ⭐`,
+    t => `${t.emoji} Yes! You're on fire! 🔥`,
+    t => `${t.emoji} Amazing work! 💪`,
+    t => `${t.emoji} Fantastic! +${t.points} stars! 🚀`,
+    t => `${t.emoji} You're a superstar! ✨`,
+];
+
+let toastTimer = null;
+function showToast(task) {
+    let el = document.getElementById('taskToast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'taskToast';
+        el.className = 'toast';
+        document.body.appendChild(el);
     }
+    const msg = TASK_TOASTS[Math.floor(Math.random() * TASK_TOASTS.length)](task);
+    el.textContent = msg;
+    el.classList.remove('hide');
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        el.classList.remove('show');
+        el.classList.add('hide');
+    }, 2200);
+}
+
+// ── Fireworks ─────────────────────────────────────────────────
+function launchFireworks(duration = 4500) {
+    const canvas = document.createElement('canvas');
+    canvas.id = 'fireworksCanvas';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    const particles = [];
+    const COLORS = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#c44dff','#ff6b9d','#f97316','#a855f7'];
+
+    function burst(x, y) {
+        for (let i = 0; i < 70; i++) {
+            const angle = (i / 70) * Math.PI * 2;
+            const speed = 2 + Math.random() * 6;
+            particles.push({
+                x, y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - 1,
+                color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                alpha: 1,
+                size: 2.5 + Math.random() * 3.5,
+                gravity: 0.08 + Math.random() * 0.08,
+                trail: [],
+            });
+        }
+    }
+
+    burst(canvas.width * 0.5, canvas.height * 0.3);
+    let launched = 1;
+    const launchInterval = setInterval(() => {
+        burst(canvas.width * (0.15 + Math.random() * 0.7), canvas.height * (0.1 + Math.random() * 0.45));
+        launched++;
+        if (launched >= 7) clearInterval(launchInterval);
+    }, 550);
+
+    let raf;
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = particles.length - 1; i >= 0; i--) {
+            const p = particles[i];
+            p.trail.push({ x: p.x, y: p.y });
+            if (p.trail.length > 5) p.trail.shift();
+            p.x  += p.vx;
+            p.y  += p.vy;
+            p.vy += p.gravity;
+            p.vx *= 0.97;
+            p.alpha -= 0.014;
+            if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+            p.trail.forEach((pt, ti) => {
+                ctx.globalAlpha = (ti / p.trail.length) * p.alpha * 0.4;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(pt.x, pt.y, p.size * 0.6, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        if (particles.length > 0) raf = requestAnimationFrame(draw);
+        else canvas.remove();
+    }
+    draw();
+    setTimeout(() => { cancelAnimationFrame(raf); canvas.remove(); }, duration + 1000);
+}
+
+// ── Celebration overlay ───────────────────────────────────────
+const CELEBRATION_MSGS = [
+    { title: "PERFECT DAY! 🏆", sub: "You completed everything! You're incredible!" },
+    { title: "YOU'RE A SUPERSTAR! 🌟", sub: "Every single task — done! Amazing!" },
+    { title: "👑 CHAMPION!", sub: "A perfect day for a perfect kid!" },
+    { title: "WOW, JUST WOW! 🌈", sub: "100% done! Couldn't be more proud!" },
+];
+
+function showCelebration(pts) {
+    launchFireworks(4500);
+
+    const msg = CELEBRATION_MSGS[Math.floor(Math.random() * CELEBRATION_MSGS.length)];
+    const ov  = document.createElement('div');
+    ov.className = 'celebration-overlay';
+    ov.innerHTML = `
+        <div class="celebration-box">
+            <div class="celebration-emoji">🎆</div>
+            <div class="celebration-title">${msg.title}</div>
+            <div class="celebration-sub">${msg.sub}</div>
+            <div class="celebration-pts">${pts} ⭐</div>
+            <div class="celebration-pts-label">stars earned today</div>
+            <button class="celebration-close" onclick="this.closest('.celebration-overlay').remove()">
+                Woohoo! 🎉
+            </button>
+        </div>
+    `;
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => ov.classList.add('show'));
+    setTimeout(() => { ov.classList.remove('show'); setTimeout(() => ov.remove(), 400); }, 6000);
 }
 
 // ── Init ─────────────────────────────────────────────────────
